@@ -22,40 +22,50 @@ class GuardarProductoRequest extends FormRequest
         }
     }
 
-    // Las reglas que debe cumplir cada campo
+    // Las reglas que debe cumplir cada campo.
+    // El mismo request sirve para crear (POST) y para editar (PATCH).
     public function rules(): array
     {
-        return [
-            'nombre'    => ['required', 'string', 'max:100'],
+        // Si la ruta trae un {producto}, estamos editando
+        $producto = $this->route('producto');
+
+        $reglas = [
+            'nombre' => ['required', 'string', 'max:100'],
             'categoria' => ['required', Rule::in(Producto::CATEGORIAS)],
-            'talle'     => ['required', 'string', 'max:10'],
-            'color'     => ['required', 'string', 'max:30'],
-            'precio'    => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'cantidad'  => ['required', 'integer', 'min:0', 'max:100000'],
+            'talle' => ['required', 'string', 'max:10'],
+            'color' => ['required', 'string', 'max:30'],
+            'precio' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'cantidad' => ['required', 'integer', 'min:0', 'max:100000'],
 
-            // El código es opcional: si queda vacío, el controlador lo genera
-            'codigo'    => ['nullable', 'string', 'max:30', 'unique:productos,codigo'],
+            // Al editar se ignora el código del propio producto, para que no choque consigo mismo
+            'codigo' => ['nullable', 'string', 'max:30', Rule::unique('productos', 'codigo')->ignore($producto?->id)],
 
-            // La imagen es opcional: debe ser una imagen real de hasta 2 MB (2048 KB)
-            'imagen'    => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'imagen' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ];
+
+        // Al editar no se toca la cantidad: el stock se maneja solo con entradas y salidas
+        if ($producto) {
+            unset($reglas['cantidad']);
+        }
+
+        return $reglas;
     }
 
     // Mensajes de error en español (por regla)
     public function messages(): array
     {
         return [
-            'required'   => 'El campo :attribute es obligatorio.',
-            'string'     => 'El campo :attribute debe ser un texto.',
-            'numeric'    => 'El campo :attribute debe ser un número.',
-            'integer'    => 'El campo :attribute debe ser un número entero.',
-            'min'        => 'El campo :attribute no puede ser menor a :min.',
-            'max'        => 'El campo :attribute no puede superar :max.',
-            'in'         => 'Elige una opción válida en :attribute.',
-            'unique'     => 'Ya existe un producto con ese :attribute.',
-            'image'      => 'El archivo de :attribute debe ser una imagen.',
-            'mimes'      => 'La imagen debe ser PNG, JPG o WEBP.',
-            'uploaded'   => 'No se pudo subir la imagen. Prueba con un archivo más liviano.',
+            'required' => 'El campo :attribute es obligatorio.',
+            'string' => 'El campo :attribute debe ser un texto.',
+            'numeric' => 'El campo :attribute debe ser un número.',
+            'integer' => 'El campo :attribute debe ser un número entero.',
+            'min' => 'El campo :attribute no puede ser menor a :min.',
+            'max' => 'El campo :attribute no puede superar :max.',
+            'in' => 'Elige una opción válida en :attribute.',
+            'unique' => 'Ya existe un producto con ese :attribute.',
+            'image' => 'El archivo de :attribute debe ser una imagen.',
+            'mimes' => 'La imagen debe ser PNG, JPG o WEBP.',
+            'uploaded' => 'No se pudo subir la imagen. Prueba con un archivo más liviano.',
             'imagen.max' => 'La imagen no puede pesar más de 2 MB.',
         ];
     }
@@ -65,7 +75,7 @@ class GuardarProductoRequest extends FormRequest
     {
         return [
             'categoria' => 'categoría',
-            'codigo'    => 'código',
+            'codigo' => 'código',
         ];
     }
 }

@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Producto extends Model
 {
@@ -48,6 +50,32 @@ class Producto extends Model
     public function estante(): BelongsTo
     {
         return $this->belongsTo(Estante::class);
+    }
+
+    // Un producto lo surten muchos proveedores (N:M), con precio de costo y código propios
+    public function proveedores(): BelongsToMany
+    {
+        return $this->belongsToMany(Proveedor::class, 'producto_proveedor')
+            ->withPivot('precio_costo', 'codigo_proveedor')
+            ->withTimestamps();
+    }
+
+    // Una prenda tiene muchos movimientos de stock (1:N)
+    public function movimientos(): HasMany
+    {
+        return $this->hasMany(Movimiento::class);
+    }
+
+    // Borra del disco la imagen del producto (si tiene una)
+    public function borrarImagen(): void
+    {
+        if ($this->imagen) {
+            $ruta = public_path('imagenes/productos/' . $this->imagen);
+
+            if (is_file($ruta)) {
+                unlink($ruta);
+            }
+        }
     }
 
     // Arma un código a partir de nombre, color y talle.

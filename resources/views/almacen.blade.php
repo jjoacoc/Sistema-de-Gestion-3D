@@ -9,6 +9,9 @@
     --}}
     <div x-data="almacen" data-url-stock="{{ route('productos.stock', ['producto' => '__ID__']) }}"
         data-url-crear="{{ route('productos.guardar') }}"
+        data-url-producto="{{ route('productos.actualizar', ['producto' => '__ID__']) }}"
+        data-url-proveedores="{{ route('productos.proveedores', ['producto' => '__ID__']) }}"
+        data-url-proveedor-quitar="{{ route('productos.proveedores.desvincular', ['producto' => '__ID__', 'proveedor' => '__PROV__']) }}"
         data-url-estante="{{ route('estantes.actualizar', ['estante' => '__ID__']) }}"
         data-url-estante-nuevo="{{ route('estantes.guardar') }}">
 
@@ -25,18 +28,20 @@
             </div>
 
             {{-- ml-auto empuja los botones a la derecha, incluso si bajan a otra línea en pantallas chicas --}}
-            <div class="ml-auto flex flex-wrap gap-2">
-                <button @click="alternarEdicion()" :class="modoEdicion
-                                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                                    : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'"
-                    class="px-4 py-2 rounded-lg whitespace-nowrap"
-                    x-text="modoEdicion ? 'Salir del modo edición' : 'Editar mapa'"></button>
+            @can("administrar")
+                <div class="ml-auto flex flex-wrap gap-2">
+                    <button @click="alternarEdicion()" :class="modoEdicion
+                        ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                        : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'"
+                        class="px-4 py-2 rounded-lg whitespace-nowrap"
+                        x-text="modoEdicion ? 'Salir del modo edición' : 'Editar mapa'"></button>
 
-                <button @click="abrirFormulario()"
-                    class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg whitespace-nowrap">
-                    + Nuevo producto
-                </button>
-            </div>
+                    <button @click="abrirFormulario()"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg whitespace-nowrap">
+                        + Nuevo producto
+                    </button>
+                </div>
+            @endcan
         </div>
 
         {{-- Aviso del modo edición --}}
@@ -87,10 +92,10 @@
 
                 {{-- Mensajes del mapa (movimientos correctos o rechazados) --}}
                 <p class="px-4 py-2 text-sm min-h-9 border-t border-gray-100" x-text="estadoMapa.mensaje" :class="{
-                                                'text-green-600': estadoMapa.tipo === 'ok',
-                                                'text-red-600': estadoMapa.tipo === 'error',
-                                                'text-gray-500': estadoMapa.tipo === 'info'
-                                            }"></p>
+                            'text-green-600': estadoMapa.tipo === 'ok',
+                            'text-red-600': estadoMapa.tipo === 'error',
+                            'text-gray-500': estadoMapa.tipo === 'info'
+                        }"></p>
             </div>
 
             {{-- Panel lateral --}}
@@ -251,10 +256,10 @@
 
                         {{-- Mensajes de estado --}}
                         <p class="mt-3 text-sm min-h-5" x-text="estado.mensaje" :class="{
-                                                        'text-green-600': estado.tipo === 'ok',
-                                                        'text-red-600': estado.tipo === 'error',
-                                                        'text-gray-500': estado.tipo === 'info'
-                                                    }"></p>
+                                    'text-green-600': estado.tipo === 'ok',
+                                    'text-red-600': estado.tipo === 'error',
+                                    'text-gray-500': estado.tipo === 'info'
+                                }"></p>
                     </div>
 
                     {{-- Panel de prendas sin ubicar --}}
@@ -290,7 +295,7 @@
         {{-- ================= Ventana: ficha de la prenda (stock) ================= --}}
         <div x-show="ficha" x-cloak @click.self="cerrarFicha()"
             class="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto">
 
                 <div class="flex items-start justify-between gap-3 mb-3">
                     <div class="min-w-0">
@@ -344,11 +349,79 @@
                     </button>
                 </div>
 
+                {{-- Proveedores de la prenda (relación N:M) --}}
+                <div class="mt-4 pt-3 border-t border-gray-100">
+                    <h3 class="text-sm font-semibold mb-2">Proveedores</h3>
+
+                    <p x-show="proveedoresFicha.length === 0" class="text-sm text-gray-500">
+                        Esta prenda no tiene proveedores.
+                    </p>
+
+                    <ul class="space-y-1">
+                        <template x-for="proveedor in proveedoresFicha" :key="proveedor.id">
+                            <li class="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+                                <div class="min-w-0">
+                                    <span class="font-medium" x-text="proveedor.nombre"></span>
+                                    <span class="text-gray-500"
+                                        x-text="'· costo ' + formatearPrecio(proveedor.precio_costo) + (proveedor.codigo_proveedor ? ' · cód. ' + proveedor.codigo_proveedor : '')"></span>
+                                </div>
+                                @can('administrar')
+                                    <button @click="desvincularProveedor(proveedor)"
+                                        class="text-red-600 hover:text-red-800 shrink-0"
+                                        title="Quitar proveedor">&times;</button>
+                                @endcan
+                            </li>
+                        </template>
+                    </ul>
+
+                    @can('administrar')
+                        <div class="mt-2">
+                            <button x-show="!vinculoAbierto" @click="vinculoAbierto = true"
+                                class="text-sm text-blue-600 hover:text-blue-800">
+                                + Agregar proveedor
+                            </button>
+
+                            <div x-show="vinculoAbierto" x-cloak class="mt-2 grid grid-cols-2 gap-2">
+                                <select x-model="vinculo.proveedor_id"
+                                    class="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                                    <option value="">Elegí un proveedor</option>
+                                    @foreach ($proveedores as $proveedor)
+                                        <option value="{{ $proveedor->id }}">{{ $proveedor->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="number" min="0" step="0.01" x-model="vinculo.precio_costo"
+                                    placeholder="Precio de costo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                <input type="text" x-model="vinculo.codigo_proveedor" placeholder="Cód. proveedor (opc.)"
+                                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                <button @click="vincularProveedor()"
+                                    class="col-span-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">
+                                    Vincular proveedor
+                                </button>
+                            </div>
+                        </div>
+                    @endcan
+                </div>
+
+
+                {{-- Editar o eliminar la prenda --}}
+                @can("administrar")
+                    <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
+                        <button @click="abrirEdicionProducto()"
+                            class="px-3 py-2 text-sm bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg">
+                            Editar
+                        </button>
+                        <button @click="eliminarProducto()"
+                            class="px-3 py-2 text-sm bg-white hover:bg-red-50 text-red-600 border border-red-300 rounded-lg">
+                            Eliminar
+                        </button>
+                    </div>
+                @endcan
+
                 <p class="mt-3 text-sm min-h-5" x-text="estadoFicha.mensaje" :class="{
-                                                'text-green-600': estadoFicha.tipo === 'ok',
-                                                'text-red-600': estadoFicha.tipo === 'error',
-                                                'text-gray-500': estadoFicha.tipo === 'info'
-                                            }"></p>
+                                        'text-green-600': estadoFicha.tipo === 'ok',
+                                        'text-red-600': estadoFicha.tipo === 'error',
+                                        'text-gray-500': estadoFicha.tipo === 'info'
+                                    }"></p>
             </div>
         </div>
 
@@ -358,12 +431,12 @@
             <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-5 my-auto">
 
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-bold">Nuevo producto</h2>
+                    <h2 class="text-xl font-bold" x-text="editandoId ? 'Editar producto' : 'Nuevo producto'"></h2>
                     <button @click="cerrarFormulario()" class="text-gray-500 hover:text-gray-800 text-2xl leading-none"
                         title="Cerrar">&times;</button>
                 </div>
 
-                <form @submit.prevent="crearProducto()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <form @submit.prevent="guardarProducto()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium mb-1">Nombre</label>
@@ -405,7 +478,7 @@
                         <p class="text-xs text-red-600 mt-1" x-text="errorDe('precio')"></p>
                     </div>
 
-                    <div>
+                    <div x-show="!editandoId">
                         <label class="block text-sm font-medium mb-1">Cantidad inicial</label>
                         <input type="number" min="0" x-model.number="formulario.cantidad"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -444,12 +517,14 @@
                         </button>
                         <button type="submit" :disabled="guardando"
                             class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg">
-                            <span x-text="guardando ? 'Guardando...' : 'Crear producto'"></span>
+                            <span
+                                x-text="guardando ? 'Guardando...' : (editandoId ? 'Guardar cambios' : 'Crear producto')"></span>
                         </button>
                     </div>
                 </form>
 
-                <p class="text-xs text-gray-500 mt-3">El producto nuevo aparece en la zona "Sin ubicar" del mapa, listo para
+                <p x-show="!editandoId" class="text-xs text-gray-500 mt-3">El producto nuevo aparece en la zona "Sin ubicar"
+                    del mapa, listo para
                     arrastrarlo a un estante.</p>
             </div>
         </div>

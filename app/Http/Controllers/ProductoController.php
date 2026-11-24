@@ -35,6 +35,17 @@ class ProductoController extends Controller
         }
 
         $producto = Producto::create($datos);
+        
+        // El stock con el que nace la prenda también queda registrado en el historial
+        if ($producto->cantidad > 0) {
+            $producto->movimientos()->create([
+                'user_id' => $solicitud->user()->id,
+                'tipo' => 'entrada',
+                'cantidad' => $producto->cantidad,
+                'stock_resultante' => $producto->cantidad,
+                'motivo' => 'Stock inicial',
+            ]);
+        }
 
         // 201 = "creado"
         return response()->json([
@@ -42,39 +53,102 @@ class ProductoController extends Controller
         ], 201);
     }
 
-    // NUEVO: suma (entrada) o resta (salida) unidades al stock de un producto.
+    // Edita los datos de un producto (el stock NO se toca acá: usa entradas y salidas).
+    // La imagen es opcional: si no suben una nueva, se conserva la actual.
+    public function actualizar(GuardarProductoRequest $solicitud, Producto $producto)
+    {
+        $datos = $solicitud->validated();
+
+        // Código vacío: se conserva el actual
+        if (empty($datos['codigo'])) {
+            $datos['codigo'] = $producto->codigo;
+        }
+
+        if ($solicitud->hasFile('imagen')) {
+            $archivo = $solicitud->file('imagen');
+            $nombreArchivo = Str::slug($datos['codigo']) . '-' . Str::random(6) . '.' . $archivo->extension();
+            $archivo->move(public_path('imagenes/productos'), $nombreArchivo);
+
+            // La imagen vieja ya no sirve: se borra del disco
+            $producto->borrarImagen();
+
+            $datos['imagen'] = $nombreArchivo;
+        } else {
+            unset($datos['imagen']);
+        }
+
+        $producto->update($datos);
+
+        return response()->json([
+            'mensaje' => 'Producto ' . $producto->codigo . ' actualizado.',
+        ]);
+    }
+
+    // Elimina un producto y su imagen. El casillero que ocupaba queda libre.
+    public function eliminar(Producto $producto)
+    {
+        $nombre = $producto->nombre;
+
+        $producto->borrarImagen();
+        $producto->delete();
+
+        return response()->json(['mensaje' => $nombre . ' fue eliminado.']);
+    }
+
+    // Suma (entrada) o resta (salida) unidades al stock de un producto y registra el movimiento.
     public function ajustarStock(Request $request, Producto $producto)
     {
         $datos = $request->validate([
-            'tipo'     => ['required', 'in:entrada,salida'],
+            'tipo' => ['required', 'in:entrada,salida'],
             'cantidad' => ['required', 'integer', 'min:1', 'max:100000'],
         ]);
 
         $cantidad = (int) $datos['cantidad'];
         $unidades = $cantidad === 1 ? 'unidad' : 'unidades';
 
-        if ($datos['tipo'] === 'entrada') {
-            $producto->increment('cantidad', $cantidad);
-            $mensaje = "Se sumaron $cantidad $unidades.";
-        } else {
-            // Resta solo si alcanza el stock. La condición y la resta ocurren en UNA consulta SQL,
-            // así dos personas restando a la vez no pueden dejar el stock en negativo.
-            $filasAfectadas = Producto::where('id', $producto->id)
-                ->where('cantidad', '>=', $cantidad)
-                ->decrement('cantidad', $cantidad);
+        // La transacción garantiza que el stock y su registro se guarden JUNTOS (o ninguno)
+        $hayStock = DB::transaction(function () use ($request, $producto, $datos, $cantidad) {
+            if ($datos['tipo'] === 'entrada') {
+                $producto->increment('cantidad', $cantidad);
+            } else {
+                // Resta solo si alcanza el stock. La condición y la resta ocurren en UNA consulta SQL,
+                // así dos personas restando a la vez no pueden dejar el stock en negativo.
+                $filasAfectadas = Producto::where('id', $producto->id)
+                    ->where('cantidad', '>=', $cantidad)
+                    ->decrement('cantidad', $cantidad);
 
-            if ($filasAfectadas === 0) {
-                return response()->json([
-                    'mensaje' => 'No hay stock suficiente: quedan ' . $producto->cantidad . ' unidades.',
-                ], 422);
+                if ($filasAfectadas === 0) {
+                    return false;
+                }
             }
 
-            $producto->refresh();   // Vuelve a leer el producto con el stock ya restado
-            $mensaje = "Se restaron $cantidad $unidades.";
+            $producto->refresh();   // Vuelve a leer el stock ya actualizado
+
+            // Se guarda el movimiento en el historial
+            $producto->movimientos()->create([
+                'user_id' => $request->user()->id,
+                'tipo' => $datos['tipo'],
+                'cantidad' => $cantidad,
+                'stock_resultante' => $producto->cantidad,
+            ]);
+
+            return true;
+        });
+
+        if (!$hayStock) {
+            $producto->refresh();
+
+            return response()->json([
+                'mensaje' => 'No hay stock suficiente: quedan ' . $producto->cantidad . ' unidades.',
+            ], 422);
         }
 
+        $mensaje = $datos['tipo'] === 'entrada'
+            ? "Se sumaron $cantidad $unidades."
+            : "Se restaron $cantidad $unidades.";
+
         return response()->json([
-            'mensaje'  => $mensaje,
+            'mensaje' => $mensaje,
             'cantidad' => $producto->cantidad,
         ]);
     }
@@ -130,7 +204,7 @@ class ProductoController extends Controller
     {
         $datos = $request->validate([
             'estante_id' => ['required', 'exists:estantes,id'],
-            'casillero'  => ['required', 'integer', 'min:0'],
+            'casillero' => ['required', 'integer', 'min:0'],
         ]);
 
         if ($producto->estante_id !== null) {
@@ -154,7 +228,7 @@ class ProductoController extends Controller
         $producto->update($datos);
 
         return response()->json([
-            'mensaje'  => 'Prenda ubicada en ' . $estante->nombre,
+            'mensaje' => 'Prenda ubicada en ' . $estante->nombre,
             'ocupados' => $estante->productos()->count(),
         ]);
     }

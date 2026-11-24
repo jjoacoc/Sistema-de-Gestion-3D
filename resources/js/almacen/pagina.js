@@ -40,9 +40,14 @@ export default function almacen() {
         ficha: null,
         cantidadMovimiento: 1,
         estadoFicha: { mensaje: "", tipo: "info" },
+        proveedoresFicha: [], // Proveedores de la prenda abierta en la ficha
+        vinculo: { proveedor_id: "", precio_costo: "", codigo_proveedor: "" },
+        vinculoAbierto: false, // ¿Está desplegado el formulario "Agregar proveedor"?
+        formatearPrecio, // Para usarla en la vista (viene de utilidades.js)
 
         // ---------- Formulario de producto nuevo ----------
         formularioAbierto: false,
+        editandoId: null, // null = creando un producto; un id = editando ese producto
         formulario: formularioVacio(),
         errores: {},
         guardando: false,
@@ -173,8 +178,16 @@ export default function almacen() {
         // ---------- Ficha de la prenda y stock ----------
         abrirFicha(producto) {
             this.ficha = { ...producto }; // Una copia, para no modificar el original
+            this.vinculoAbierto = false;
             this.cantidadMovimiento = 1;
             this.estadoFicha = { mensaje: "", tipo: "info" };
+            this.proveedoresFicha = [];
+            this.vinculo = {
+                proveedor_id: "",
+                precio_costo: "",
+                codigo_proveedor: "",
+            };
+            this.cargarProveedoresFicha();
         },
 
         cerrarFicha() {
@@ -228,14 +241,39 @@ export default function almacen() {
         // ---------- Formulario de producto nuevo ----------
         abrirFormulario() {
             this.quitarVistaPrevia();
+            this.editandoId = null;
             this.formulario = formularioVacio();
             this.errores = {};
+            this.formularioAbierto = true;
+        },
+
+        // Abre el mismo formulario, cargado con los datos de la prenda de la ficha
+        abrirEdicionProducto() {
+            if (!this.ficha) return;
+
+            this.quitarVistaPrevia();
+            this.editandoId = this.ficha.id;
+            this.formulario = {
+                nombre: this.ficha.nombre,
+                categoria: this.ficha.categoria,
+                talle: this.ficha.talle,
+                color: this.ficha.color,
+                precio: this.ficha.precio,
+                cantidad: this.ficha.cantidad, // Solo informativo: al editar no se envía
+                codigo: this.ficha.codigo,
+                imagen: null,
+            };
+            // Si ya tenía imagen, se muestra como vista previa (no se vuelve a subir)
+            this.vistaPrevia = this.ficha.imagen_url ?? null;
+            this.errores = {};
+            this.cerrarFicha();
             this.formularioAbierto = true;
         },
 
         cerrarFormulario() {
             this.formularioAbierto = false;
             this.quitarVistaPrevia();
+            this.editandoId = null;
         },
 
         // El usuario eligió un archivo de imagen
@@ -258,7 +296,7 @@ export default function almacen() {
 
         // Libera la memoria de la vista previa anterior
         quitarVistaPrevia() {
-            if (this.vistaPrevia) {
+            if (this.vistaPrevia && this.vistaPrevia.startsWith("blob:")) {
                 URL.revokeObjectURL(this.vistaPrevia);
             }
             this.vistaPrevia = null;
@@ -269,23 +307,33 @@ export default function almacen() {
             return this.errores[campo]?.[0] ?? "";
         },
 
-        async crearProducto() {
+        // Crea un producto nuevo o guarda los cambios de uno existente
+        async guardarProducto() {
             this.errores = {};
             this.guardando = true;
+
+            const editando = this.editandoId !== null;
 
             // FormData es la forma de enviar texto y archivos juntos
             const datos = new FormData();
             Object.entries(this.formulario).forEach(([campo, valor]) => {
-                if (valor !== null && valor !== "") {
-                    datos.append(campo, valor);
-                }
+                if (valor === null || valor === "") return;
+                if (editando && campo === "cantidad") return; // El stock se maneja con entradas y salidas
+                datos.append(campo, valor);
             });
 
-            try {
-                const respuesta = await window.axios.post(
-                    this.$root.dataset.urlCrear,
-                    datos,
+            // Un archivo no viaja en un PATCH real: se envía por POST y Laravel lo trata como PATCH
+            let url = this.$root.dataset.urlCrear;
+            if (editando) {
+                datos.append("_method", "PATCH");
+                url = this.$root.dataset.urlProducto.replace(
+                    "__ID__",
+                    this.editandoId,
                 );
+            }
+
+            try {
+                const respuesta = await window.axios.post(url, datos);
 
                 this.estadoMapa = {
                     mensaje: respuesta.data.mensaje + " ✔",
@@ -309,6 +357,116 @@ export default function almacen() {
                 this.guardando = false;
             }
         },
+
+        // Pide al servidor los proveedores de la prenda de la ficha
+        async cargarProveedoresFicha() {
+            if (!this.ficha) return;
+
+            try {
+                const url = this.$root.dataset.urlProveedores.replace(
+                    "__ID__",
+                    this.ficha.id,
+                );
+                const respuesta = await window.axios.get(url);
+                this.proveedoresFicha = respuesta.data;
+            } catch (error) {
+                this.proveedoresFicha = [];
+            }
+        },
+
+        // attach: vincula el proveedor elegido a la prenda
+        async vincularProveedor() {
+            if (!this.ficha) return;
+
+            try {
+                const url = this.$root.dataset.urlProveedores.replace(
+                    "__ID__",
+                    this.ficha.id,
+                );
+                const respuesta = await window.axios.post(url, this.vinculo);
+
+                this.proveedoresFicha = respuesta.data.proveedores;
+                this.vinculo = {
+                    proveedor_id: "",
+                    precio_costo: "",
+                    codigo_proveedor: "",
+                };
+                this.vinculoAbierto = false;
+                this.estadoFicha = {
+                    mensaje: respuesta.data.mensaje,
+                    tipo: "ok",
+                };
+            } catch (error) {
+                // Primer error de validación (422) o el mensaje del servidor
+                const errores = error.response?.data?.errors;
+                const primero = errores ? Object.values(errores)[0][0] : null;
+
+                this.estadoFicha = {
+                    mensaje:
+                        primero ??
+                        error.response?.data?.mensaje ??
+                        "No se pudo vincular el proveedor.",
+                    tipo: "error",
+                };
+            }
+        },
+
+        // detach: quita el vínculo con un proveedor
+        async desvincularProveedor(proveedor) {
+            if (!this.ficha) return;
+
+            try {
+                const url = this.$root.dataset.urlProveedorQuitar
+                    .replace("__ID__", this.ficha.id)
+                    .replace("__PROV__", proveedor.id);
+                const respuesta = await window.axios.delete(url);
+
+                this.proveedoresFicha = respuesta.data.proveedores;
+                this.estadoFicha = {
+                    mensaje: respuesta.data.mensaje,
+                    tipo: "ok",
+                };
+            } catch (error) {
+                this.estadoFicha = {
+                    mensaje:
+                        error.response?.data?.mensaje ??
+                        "No se pudo quitar el proveedor.",
+                    tipo: "error",
+                };
+            }
+        },
+
+        // Elimina la prenda que se muestra en la ficha
+        async eliminarProducto() {
+            if (!this.ficha) return;
+
+            const pregunta = `¿Eliminar "${this.ficha.nombre}" (${this.ficha.codigo})? Esta acción no se puede deshacer.`;
+            if (!window.confirm(pregunta)) return;
+
+            try {
+                const url = this.$root.dataset.urlProducto.replace(
+                    "__ID__",
+                    this.ficha.id,
+                );
+                const respuesta = await window.axios.delete(url);
+
+                this.estadoMapa = {
+                    mensaje: respuesta.data.mensaje + " ✔",
+                    tipo: "ok",
+                };
+                this.cerrarFicha();
+
+                window.dispatchEvent(new CustomEvent("inventario-actualizado"));
+            } catch (error) {
+                this.estadoFicha = {
+                    mensaje:
+                        error.response?.data?.mensaje ??
+                        "No se pudo eliminar el producto.",
+                    tipo: "error",
+                };
+            }
+        },
+
         // ---------- Modo edición de estantes ----------
 
         // Activa o desactiva el modo edición y se lo avisa al mapa

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Estante;
 use App\Models\Producto;
+use App\Models\Proveedor;
 
 class AlmacenController extends Controller
 {
@@ -13,6 +14,7 @@ class AlmacenController extends Controller
     {
         return view('almacen', [
             'categorias' => Producto::CATEGORIAS,
+            'proveedores' => Proveedor::orderBy('nombre')->get(['id', 'nombre']),
             'limites' => [
                 'capacidad' => Estante::CAPACIDAD_MAXIMA,
                 'por_fila' => Estante::POR_FILA_MAXIMO,

@@ -10,8 +10,11 @@ class DatabaseSeeder extends Seeder
     {
         // El orden importa: primero los estantes, porque los productos dependen de ellos
         $this->call([
+            UserSeeder::class,
             EstanteSeeder::class,
             ProductoSeeder::class,
+            ProveedorSeeder::class,
+            MovimientoSeeder::class,
         ]);
     }
 }
