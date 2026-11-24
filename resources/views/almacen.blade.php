@@ -270,6 +270,60 @@
             </aside>
         </div>
 
+                {{-- ================= Ventana: visor 3D de la prenda ================= --}}
+        <div x-show="visorAbierto" x-cloak @click.self="cerrarVisor()"
+            class="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl p-4">
+
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div class="min-w-0">
+                        <h2 class="text-xl font-bold truncate" x-text="ficha?.nombre"></h2>
+                        <p class="text-sm text-gray-500"
+                            x-text="ficha ? ficha.categoria + ' · Talle ' + ficha.talle + ' · ' + ficha.color : ''"></p>
+                    </div>
+                    <button @click="cerrarVisor()" class="text-gray-500 hover:text-gray-800 text-2xl leading-none"
+                        title="Cerrar">&times;</button>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 min-w-0">
+                        {{-- Aquí Three.js dibuja la prenda --}}
+                        <div id="visor-prenda" class="w-full rounded-lg border border-gray-200 overflow-hidden bg-gray-100"
+                            style="height: 420px"></div>
+
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <button @click="$dispatch('visor-vista', 'frente')"
+                                class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Frente</button>
+                            <button @click="$dispatch('visor-vista', 'costado')"
+                                class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Costado</button>
+                            <button @click="$dispatch('visor-vista', 'espalda')"
+                                class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Espalda</button>
+                            <button @click="$dispatch('visor-vista', 'tres_cuartos')"
+                                class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">3/4</button>
+                            <button @click="alternarGiro()"
+                                :class="visorGiro ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border border-gray-300'"
+                                class="px-3 py-1.5 text-sm rounded-lg ml-auto">
+                                Giro automático: <span x-text="visorGiro ? 'sí' : 'no'"></span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Arrastrá para girarla, usá la rueda para acercar o alejar.</p>
+                    </div>
+
+                    <div class="md:w-56 space-y-3">
+                        <div class="rounded-lg bg-gray-100 h-48 flex items-center justify-center overflow-hidden">
+                            <img x-show="ficha?.imagen_url" :src="ficha?.imagen_url" alt=""
+                                class="max-w-full max-h-full object-contain">
+                            <span x-show="!ficha?.imagen_url" class="text-xs text-gray-400">Sin foto</span>
+                        </div>
+                        <p class="text-xs text-gray-500">
+                            El modelo 3D es ilustrativo y se pinta con el color del producto.
+                            La foto real queda acá como referencia.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- ================= Ventana: producto nuevo ================= --}}
         <div x-show="formularioAbierto" x-cloak @click.self="cerrarFormulario()"
             class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
@@ -376,7 +430,7 @@
     </div>
 @endsection
 
-{{-- Scripts de esta página: el mapa y el estante ampliado --}}
+{{-- Scripts de esta página: el mapa3d y visor de la prenda en 3d --}}
 @push('scripts')
-    @vite(['resources/js/almacen/mapa3d.js'])
+    @vite(['resources/js/almacen/mapa3d.js', 'resources/js/almacen/visor3d.js'])
 @endpush

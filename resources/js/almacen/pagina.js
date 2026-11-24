@@ -43,6 +43,9 @@ export default function almacen() {
         proveedoresFicha: [], // Proveedores de la prenda abierta en la ficha
         vinculo: { proveedor_id: "", precio_costo: "", codigo_proveedor: "" },
         vinculoAbierto: false, // ¿Está desplegado el formulario "Agregar proveedor"?
+        // ---------- Visor 3D de la prenda ----------
+        visorAbierto: false,
+        visorGiro: true, // ¿Está activado el giro automático?
         formatearPrecio, // Para usarla en la vista (viene de utilidades.js)
 
         // ---------- Formulario de producto nuevo ----------
@@ -90,12 +93,18 @@ export default function almacen() {
             window.addEventListener("abrir-ficha", (evento) => {
                 this.abrirFicha(evento.detail);
             });
+            // El visor avisa si el giro automático se apagó (al agarrar la prenda con el mouse)
+            window.addEventListener("visor-giro-cambiado", (evento) => {
+                this.visorGiro = evento.detail;
+            });
 
             // Tecla Esc: cierra lo que esté más arriba
             window.addEventListener("keydown", (evento) => {
                 if (evento.key !== "Escape") return;
 
-                if (this.formularioAbierto) {
+                if (this.visorAbierto) {
+                    this.cerrarVisor();
+                } else if (this.formularioAbierto) {
                     this.cerrarFormulario();
                 } else if (this.ficha) {
                     this.cerrarFicha();
@@ -434,6 +443,27 @@ export default function almacen() {
                     tipo: "error",
                 };
             }
+        },
+
+        // ---------- Visor 3D de la prenda ----------
+        abrirVisor() {
+            if (!this.ficha) return;
+
+            this.visorGiro = true;
+            this.visorAbierto = true;
+
+            // $nextTick espera a que la ventana sea visible para medir su tamaño
+            this.$nextTick(() => this.$dispatch("abrir-visor", this.ficha));
+        },
+
+        cerrarVisor() {
+            this.visorAbierto = false;
+            this.$dispatch("cerrar-visor");
+        },
+
+        alternarGiro() {
+            this.visorGiro = !this.visorGiro;
+            this.$dispatch("visor-giro", this.visorGiro);
         },
 
         // Elimina la prenda que se muestra en la ficha

@@ -10,6 +10,7 @@ export default defineConfig({
                 "resources/css/app.css",
                 "resources/js/app.js",
                 "resources/js/almacen/mapa3d.js", // El mapa en 3D (Three.js)
+                "resources/js/almacen/visor3d.js", // Visor 3D de una prenda
                 "resources/js/panel.js", // Solo se carga en el panel general (Chart.js)
             ],
             refresh: true,
