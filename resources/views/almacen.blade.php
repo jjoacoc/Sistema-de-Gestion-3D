@@ -20,10 +20,10 @@
             {{-- flex-1 hace que el texto ocupe solo el espacio sobrante y se acomode en varias líneas --}}
             <div class="flex-1 min-w-64">
                 <h1 class="text-2xl font-bold mb-1">Almacén</h1>
-                <p class="text-gray-600">
-                    Arrastra una miniatura a otro estante o a la zona "Sin ubicar" para moverla.
-                    Pasa el mouse sobre una prenda para ver su código y precio, y haz doble click
-                    para abrir su ficha y manejar el stock.
+                 <p class="text-gray-600">
+                    Arrastrá una prenda a otro estante o a la plataforma "Sin ubicar" para moverla. Girá el almacén
+                    arrastrando el piso y acercá con la rueda. Pasá el mouse sobre una prenda para ver su código y
+                    precio, y hacé doble clic para abrir su ficha.
                 </p>
             </div>
 
@@ -31,8 +31,8 @@
             @can("administrar")
                 <div class="ml-auto flex flex-wrap gap-2">
                     <button @click="alternarEdicion()" :class="modoEdicion
-                        ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                        : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'"
+                                        ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                        : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'"
                         class="px-4 py-2 rounded-lg whitespace-nowrap"
                         x-text="modoEdicion ? 'Salir del modo edición' : 'Editar mapa'"></button>
 
@@ -48,10 +48,9 @@
         <div x-show="modoEdicion" x-cloak
             class="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm">
             <strong>Modo edición.</strong>
-            Arrastra un estante para moverlo (se acomoda a una grilla de 20 px y no puede pisar a otro) y usa las
-            manijas azules para cambiarle el tamaño.
-            Elige un estante para editar su nombre, capacidad o prendas por fila, o eliminarlo.
-            Las miniaturas se ocultan mientras editas. En el panel lateral puedes crear estantes nuevos.
+            Arrastrá un estante por el piso para moverlo (se acomoda a una grilla de 20 y no puede pisar a otro).
+            Elegí un estante para editar su nombre, capacidad o prendas por fila, o eliminarlo.
+            En el panel lateral podés crear estantes nuevos.
         </div>
 
         {{-- md:flex-row: el panel lateral queda al costado desde 768 px de ancho (con las herramientas
@@ -84,18 +83,62 @@
                     <p x-show="resultado.activo" x-text="textoResultado()" class="w-full text-sm text-gray-600"></p>
                 </div>
 
-                {{-- Aquí Konva dibuja el mapa. data-medidas lleva la grilla y los límites del modo edición --}}
+                {{-- Aquí Three.js dibuja el almacén en 3D. data-medidas lleva la grilla y los límites del modo edición --}}
                 <div id="mapa-almacen" data-url="{{ route('almacen.estantes') }}"
                     data-url-mover="{{ route('productos.mover', ['producto' => '__ID__']) }}"
                     data-url-geometria="{{ route('estantes.geometria', ['estante' => '__ID__']) }}"
+                    data-url-casillero="{{ route('productos.casillero', ['producto' => '__ID__']) }}"
+                    data-url-ubicar="{{ route('productos.ubicar', ['producto' => '__ID__']) }}"
                     data-medidas="{{ json_encode($medidas) }}" class="w-full"></div>
+
+                                    {{-- Barra del interior: aparece al abrir un estante --}}
+                <div x-show="modalAbierto" x-cloak class="border-t border-gray-100 p-3 bg-blue-50">
+                    <div class="flex items-center justify-between gap-3 mb-1">
+                        <h2 class="font-semibold"
+                            x-text="estante ? 'Interior de ' + estante.nombre + ' (' + estante.ocupados + ' / ' + estante.capacidad + ')' : ''">
+                        </h2>
+                        <button @click="cerrar()"
+                            class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            ← Volver al almacén
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-gray-500 mb-2">
+                        Arrastrá una prenda a otra sección para moverla (si está ocupada, se intercambian).
+                        Para ubicar una prenda sin estante, arrastrala desde acá hasta una sección libre.
+                    </p>
+
+                    <p class="text-sm font-medium mb-1">Sin ubicar (<span x-text="sinUbicar.length"></span>)</p>
+                    <p x-show="sinUbicar.length === 0" class="text-sm text-gray-500">Todas las prendas están ubicadas.</p>
+
+                    <ul class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                        <template x-for="producto in sinUbicar" :key="producto.id">
+                            <li draggable="true" @dragstart="empezarArrastre($event, producto)"
+                                class="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded-lg cursor-grab hover:bg-blue-100">
+                                <img x-show="producto.imagen_url" :src="producto.imagen_url" draggable="false"
+                                    class="w-10 h-10 object-contain" alt="">
+                                <div x-show="!producto.imagen_url" class="w-10 h-10 bg-gray-300 rounded"></div>
+                                <div class="min-w-0 text-xs">
+                                    <p class="font-semibold truncate max-w-32" x-text="producto.nombre"></p>
+                                    <p class="text-gray-500" x-text="producto.talle + ' · ' + producto.color"></p>
+                                </div>
+                            </li>
+                        </template>
+                    </ul>
+
+                    <p class="mt-2 text-sm min-h-5" x-text="estado.mensaje" :class="{
+                                'text-green-600': estado.tipo === 'ok',
+                                'text-red-600': estado.tipo === 'error',
+                                'text-gray-500': estado.tipo === 'info'
+                            }"></p>
+                </div>
 
                 {{-- Mensajes del mapa (movimientos correctos o rechazados) --}}
                 <p class="px-4 py-2 text-sm min-h-9 border-t border-gray-100" x-text="estadoMapa.mensaje" :class="{
-                            'text-green-600': estadoMapa.tipo === 'ok',
-                            'text-red-600': estadoMapa.tipo === 'error',
-                            'text-gray-500': estadoMapa.tipo === 'info'
-                        }"></p>
+                    'text-green-600': estadoMapa.tipo === 'ok',
+                    'text-red-600': estadoMapa.tipo === 'error',
+                    'text-gray-500': estadoMapa.tipo === 'info'
+                }"></p>
             </div>
 
             {{-- Panel lateral --}}
@@ -227,204 +270,6 @@
             </aside>
         </div>
 
-        {{-- ================= Ventana: estante ampliado ================= --}}
-        <div x-show="modalAbierto" x-cloak @click.self="cerrar()"
-            class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-xl w-full max-w-6xl p-4">
-
-                {{-- Cabecera: nombre del estante y ocupación en vivo --}}
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-xl font-bold"
-                        x-text="estante ? 'Interior de ' + estante.nombre + ' (' + estante.ocupados + ' / ' + estante.capacidad + ')' : ''">
-                    </h2>
-                    <button @click="cerrar()" class="text-gray-500 hover:text-gray-800 text-2xl leading-none"
-                        title="Cerrar">&times;</button>
-                </div>
-
-                <div class="flex flex-col md:flex-row gap-4">
-
-                    <div class="flex-1 min-w-0">
-                        {{-- Aquí Konva dibuja el interior del estante.
-                        Si el estante tiene muchas filas, aparece una barra de desplazamiento vertical --}}
-                        <div id="interior-estante"
-                            data-url-productos="{{ route('almacen.productos', ['estante' => '__ID__']) }}"
-                            data-url-casillero="{{ route('productos.casillero', ['producto' => '__ID__']) }}"
-                            data-url-sin-ubicar="{{ route('almacen.sin-ubicar') }}"
-                            data-url-ubicar="{{ route('productos.ubicar', ['producto' => '__ID__']) }}"
-                            class="w-full rounded-lg border border-gray-200 overflow-x-hidden overflow-y-auto max-h-[420px] [scrollbar-gutter:stable]">
-                        </div>
-
-                        {{-- Mensajes de estado --}}
-                        <p class="mt-3 text-sm min-h-5" x-text="estado.mensaje" :class="{
-                                    'text-green-600': estado.tipo === 'ok',
-                                    'text-red-600': estado.tipo === 'error',
-                                    'text-gray-500': estado.tipo === 'info'
-                                }"></p>
-                    </div>
-
-                    {{-- Panel de prendas sin ubicar --}}
-                    <div class="md:w-60">
-                        <h3 class="font-semibold mb-1">Sin ubicar (<span x-text="sinUbicar.length"></span>)</h3>
-                        <p class="text-xs text-gray-500 mb-2">Arrastra una prenda hacia un casillero libre.</p>
-
-                        <p x-show="sinUbicar.length === 0" class="text-sm text-gray-500">
-                            Todas las prendas están ubicadas.
-                        </p>
-
-                        <ul class="space-y-2 max-h-[340px] overflow-y-auto pr-1">
-                            <template x-for="producto in sinUbicar" :key="producto.id">
-                                <li draggable="true" @dragstart="empezarArrastre($event, producto)"
-                                    class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg cursor-grab hover:bg-blue-50">
-                                    {{-- draggable="false" evita que el navegador arrastre solo la imagen --}}
-                                    <img x-show="producto.imagen_url" :src="producto.imagen_url" draggable="false"
-                                        class="w-12 h-12 object-contain" alt="">
-                                    <div x-show="!producto.imagen_url" class="w-12 h-12 bg-gray-300 rounded"></div>
-
-                                    <div class="min-w-0 text-sm">
-                                        <p class="font-semibold truncate" x-text="producto.nombre"></p>
-                                        <p class="text-gray-500" x-text="producto.talle + ' · ' + producto.color"></p>
-                                    </div>
-                                </li>
-                            </template>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ================= Ventana: ficha de la prenda (stock) ================= --}}
-        <div x-show="ficha" x-cloak @click.self="cerrarFicha()"
-            class="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto">
-
-                <div class="flex items-start justify-between gap-3 mb-3">
-                    <div class="min-w-0">
-                        <h2 class="text-xl font-bold truncate" x-text="ficha?.nombre"></h2>
-                        <p class="text-sm text-gray-500" x-text="ficha ? ficha.codigo + ' · ' + ficha.categoria : ''"></p>
-                    </div>
-                    <button @click="cerrarFicha()" class="text-gray-500 hover:text-gray-800 text-2xl leading-none"
-                        title="Cerrar">&times;</button>
-                </div>
-
-                <div class="flex gap-4 mb-4">
-                    <div class="w-28 h-28 shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
-                        <img x-show="ficha?.imagen_url" :src="ficha?.imagen_url" alt=""
-                            class="max-w-full max-h-full object-contain">
-                        <span x-show="!ficha?.imagen_url" class="text-xs text-gray-400">Sin imagen</span>
-                    </div>
-
-                    <dl class="text-sm space-y-1">
-                        <div>
-                            <dt class="inline text-gray-500">Talle:</dt>
-                            <dd class="inline font-medium" x-text="ficha?.talle"></dd>
-                        </div>
-                        <div>
-                            <dt class="inline text-gray-500">Color:</dt>
-                            <dd class="inline font-medium" x-text="ficha?.color"></dd>
-                        </div>
-                        <div>
-                            <dt class="inline text-gray-500">Precio:</dt>
-                            <dd class="inline font-medium" x-text="precioFicha()"></dd>
-                        </div>
-                    </dl>
-                </div>
-
-                {{-- Stock actual --}}
-                <div class="rounded-lg bg-blue-50 p-3 mb-4 text-center">
-                    <p class="text-sm text-gray-600">Stock actual</p>
-                    <p class="text-3xl font-bold text-blue-700" x-text="ficha?.cantidad"></p>
-                </div>
-
-                {{-- Sumar o restar unidades --}}
-                <div class="flex items-center gap-2">
-                    <input type="number" min="1" x-model.number="cantidadMovimiento"
-                        class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button @click="ajustarStock('entrada')"
-                        class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
-                        + Sumar
-                    </button>
-                    <button @click="ajustarStock('salida')"
-                        class="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
-                        − Restar
-                    </button>
-                </div>
-
-                {{-- Proveedores de la prenda (relación N:M) --}}
-                <div class="mt-4 pt-3 border-t border-gray-100">
-                    <h3 class="text-sm font-semibold mb-2">Proveedores</h3>
-
-                    <p x-show="proveedoresFicha.length === 0" class="text-sm text-gray-500">
-                        Esta prenda no tiene proveedores.
-                    </p>
-
-                    <ul class="space-y-1">
-                        <template x-for="proveedor in proveedoresFicha" :key="proveedor.id">
-                            <li class="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
-                                <div class="min-w-0">
-                                    <span class="font-medium" x-text="proveedor.nombre"></span>
-                                    <span class="text-gray-500"
-                                        x-text="'· costo ' + formatearPrecio(proveedor.precio_costo) + (proveedor.codigo_proveedor ? ' · cód. ' + proveedor.codigo_proveedor : '')"></span>
-                                </div>
-                                @can('administrar')
-                                    <button @click="desvincularProveedor(proveedor)"
-                                        class="text-red-600 hover:text-red-800 shrink-0"
-                                        title="Quitar proveedor">&times;</button>
-                                @endcan
-                            </li>
-                        </template>
-                    </ul>
-
-                    @can('administrar')
-                        <div class="mt-2">
-                            <button x-show="!vinculoAbierto" @click="vinculoAbierto = true"
-                                class="text-sm text-blue-600 hover:text-blue-800">
-                                + Agregar proveedor
-                            </button>
-
-                            <div x-show="vinculoAbierto" x-cloak class="mt-2 grid grid-cols-2 gap-2">
-                                <select x-model="vinculo.proveedor_id"
-                                    class="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
-                                    <option value="">Elegí un proveedor</option>
-                                    @foreach ($proveedores as $proveedor)
-                                        <option value="{{ $proveedor->id }}">{{ $proveedor->nombre }}</option>
-                                    @endforeach
-                                </select>
-                                <input type="number" min="0" step="0.01" x-model="vinculo.precio_costo"
-                                    placeholder="Precio de costo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                                <input type="text" x-model="vinculo.codigo_proveedor" placeholder="Cód. proveedor (opc.)"
-                                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                                <button @click="vincularProveedor()"
-                                    class="col-span-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">
-                                    Vincular proveedor
-                                </button>
-                            </div>
-                        </div>
-                    @endcan
-                </div>
-
-
-                {{-- Editar o eliminar la prenda --}}
-                @can("administrar")
-                    <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
-                        <button @click="abrirEdicionProducto()"
-                            class="px-3 py-2 text-sm bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg">
-                            Editar
-                        </button>
-                        <button @click="eliminarProducto()"
-                            class="px-3 py-2 text-sm bg-white hover:bg-red-50 text-red-600 border border-red-300 rounded-lg">
-                            Eliminar
-                        </button>
-                    </div>
-                @endcan
-
-                <p class="mt-3 text-sm min-h-5" x-text="estadoFicha.mensaje" :class="{
-                                        'text-green-600': estadoFicha.tipo === 'ok',
-                                        'text-red-600': estadoFicha.tipo === 'error',
-                                        'text-gray-500': estadoFicha.tipo === 'info'
-                                    }"></p>
-            </div>
-        </div>
-
         {{-- ================= Ventana: producto nuevo ================= --}}
         <div x-show="formularioAbierto" x-cloak @click.self="cerrarFormulario()"
             class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
@@ -533,5 +378,5 @@
 
 {{-- Scripts de esta página: el mapa y el estante ampliado --}}
 @push('scripts')
-    @vite(['resources/js/almacen/mapa.js', 'resources/js/almacen/interior.js'])
+    @vite(['resources/js/almacen/mapa3d.js'])
 @endpush

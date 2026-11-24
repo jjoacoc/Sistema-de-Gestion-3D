@@ -111,7 +111,7 @@ export default function almacen() {
             this.sinUbicar = [];
             this.modalAbierto = true;
 
-            // $nextTick espera a que el modal sea visible antes de crear el escenario de Konva
+            // $nextTick espera a que el modal sea visible y avisa al mapa 3D para que acerque la cámara al estante
             this.$nextTick(() => this.$dispatch("abrir-estante", this.estante));
         },
 

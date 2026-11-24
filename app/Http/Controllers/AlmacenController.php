@@ -8,7 +8,7 @@ use App\Models\Proveedor;
 
 class AlmacenController extends Controller
 {
-    // Muestra la página del simulador 2D del almacén.
+    // Muestra la página del simulador 3D del almacén.
     // Le pasa las categorías (formulario de producto) y los límites de los estantes (modo edición).
     public function mostrar()
     {

@@ -100,7 +100,7 @@
     </div>
 @endsection
 
-{{-- Chart.js solo se descarga en esta página (igual que Konva en el almacén) --}}
+{{-- Chart.js solo se descarga en esta página (igual que Three.js en el almacén) --}}
 @push('scripts')
     @vite(['resources/js/panel.js'])
 @endpush

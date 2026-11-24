@@ -9,8 +9,7 @@ export default defineConfig({
             input: [
                 "resources/css/app.css",
                 "resources/js/app.js",
-                "resources/js/almacen/mapa.js", // Solo se carga en la página del almacén
-                "resources/js/almacen/interior.js", // Nuevo: el estante ampliado
+                "resources/js/almacen/mapa3d.js", // El mapa en 3D (Three.js)
                 "resources/js/panel.js", // Solo se carga en el panel general (Chart.js)
             ],
             refresh: true,
