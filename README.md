@@ -19,6 +19,7 @@ El problema que resuelve: un local necesita saber **qué prendas tiene, cuántas
 | Integrante | Rol en el proyecto |
 |---|---|
 | _Joaquin Cofre_ | _Desarrollador_ |
+
 ---
 
 ## 3. Funcionalidades implementadas
