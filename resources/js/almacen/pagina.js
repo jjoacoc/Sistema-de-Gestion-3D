@@ -93,6 +93,12 @@ export default function almacen() {
             window.addEventListener("abrir-ficha", (evento) => {
                 this.abrirFicha(evento.detail);
             });
+            // Doble clic sobre un estante del mapa 3D: se selecciona y se abre
+            window.addEventListener("solicitar-abrir-estante", (evento) => {
+                this.estante = evento.detail;
+                this.cargarEdicion();
+                this.abrir();
+            });
             // El visor avisa si el giro automático se apagó (al agarrar la prenda con el mouse)
             window.addEventListener("visor-giro-cambiado", (evento) => {
                 this.visorGiro = evento.detail;

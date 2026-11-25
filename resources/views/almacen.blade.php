@@ -20,10 +20,9 @@
             {{-- flex-1 hace que el texto ocupe solo el espacio sobrante y se acomode en varias líneas --}}
             <div class="flex-1 min-w-64">
                 <h1 class="text-2xl font-bold mb-1">Almacén</h1>
-                 <p class="text-gray-600">
-                    Arrastrá una prenda a otro estante o a la plataforma "Sin ubicar" para moverla. Girá el almacén
-                    arrastrando el piso y acercá con la rueda. Pasá el mouse sobre una prenda para ver su código y
-                    precio, y hacé doble clic para abrir su ficha.
+                <p class="text-gray-600">
+                    Arrastrá una prenda a otro estante o a la plataforma "Sin ubicar" para moverla. Hacé doble clic en
+                    un estante para abrirlo y, adentro, doble clic en una prenda para ver su ficha y su modelo en 3D.
                 </p>
             </div>
 
@@ -321,6 +320,142 @@
                         </p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+                {{-- ================= Ventana: ficha de la prenda (stock) ================= --}}
+        <div x-show="ficha" x-cloak @click.self="cerrarFicha()"
+            class="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto">
+
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div class="min-w-0">
+                        <h2 class="text-xl font-bold truncate" x-text="ficha?.nombre"></h2>
+                        <p class="text-sm text-gray-500" x-text="ficha ? ficha.codigo + ' · ' + ficha.categoria : ''"></p>
+                    </div>
+                    <button @click="cerrarFicha()" class="text-gray-500 hover:text-gray-800 text-2xl leading-none"
+                        title="Cerrar">&times;</button>
+                </div>
+
+                <div class="flex gap-4 mb-4">
+                    <div class="w-28 h-28 shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
+                        <img x-show="ficha?.imagen_url" :src="ficha?.imagen_url" alt=""
+                            class="max-w-full max-h-full object-contain">
+                        <span x-show="!ficha?.imagen_url" class="text-xs text-gray-400">Sin imagen</span>
+                    </div>
+
+                    <dl class="text-sm space-y-1">
+                        <div>
+                            <dt class="inline text-gray-500">Talle:</dt>
+                            <dd class="inline font-medium" x-text="ficha?.talle"></dd>
+                        </div>
+                        <div>
+                            <dt class="inline text-gray-500">Color:</dt>
+                            <dd class="inline font-medium" x-text="ficha?.color"></dd>
+                        </div>
+                        <div>
+                            <dt class="inline text-gray-500">Precio:</dt>
+                            <dd class="inline font-medium" x-text="precioFicha()"></dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <button @click="abrirVisor()"
+                    class="w-full mb-4 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm">
+                    Ver prenda en 3D
+                </button>
+
+                {{-- Stock actual --}}
+                <div class="rounded-lg bg-blue-50 p-3 mb-4 text-center">
+                    <p class="text-sm text-gray-600">Stock actual</p>
+                    <p class="text-3xl font-bold text-blue-700" x-text="ficha?.cantidad"></p>
+                </div>
+
+                {{-- Sumar o restar unidades --}}
+                <div class="flex items-center gap-2">
+                    <input type="number" min="1" x-model.number="cantidadMovimiento"
+                        class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button @click="ajustarStock('entrada')"
+                        class="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+                        + Sumar
+                    </button>
+                    <button @click="ajustarStock('salida')"
+                        class="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                        − Restar
+                    </button>
+                </div>
+
+                {{-- Proveedores de la prenda (relación N:M) --}}
+                <div class="mt-4 pt-3 border-t border-gray-100">
+                    <h3 class="text-sm font-semibold mb-2">Proveedores</h3>
+
+                    <p x-show="proveedoresFicha.length === 0" class="text-sm text-gray-500">
+                        Esta prenda no tiene proveedores.
+                    </p>
+
+                    <ul class="space-y-1">
+                        <template x-for="proveedor in proveedoresFicha" :key="proveedor.id">
+                            <li class="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+                                <div class="min-w-0">
+                                    <span class="font-medium" x-text="proveedor.nombre"></span>
+                                    <span class="text-gray-500"
+                                        x-text="'· costo ' + formatearPrecio(proveedor.precio_costo) + (proveedor.codigo_proveedor ? ' · cód. ' + proveedor.codigo_proveedor : '')"></span>
+                                </div>
+                                @can('administrar')
+                                    <button @click="desvincularProveedor(proveedor)"
+                                        class="text-red-600 hover:text-red-800 shrink-0" title="Quitar proveedor">&times;</button>
+                                @endcan
+                            </li>
+                        </template>
+                    </ul>
+
+                    @can('administrar')
+                        <div class="mt-2">
+                            <button x-show="!vinculoAbierto" @click="vinculoAbierto = true"
+                                class="text-sm text-blue-600 hover:text-blue-800">
+                                + Agregar proveedor
+                            </button>
+
+                            <div x-show="vinculoAbierto" x-cloak class="mt-2 grid grid-cols-2 gap-2">
+                                <select x-model="vinculo.proveedor_id"
+                                    class="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                                    <option value="">Elegí un proveedor</option>
+                                    @foreach ($proveedores as $proveedor)
+                                        <option value="{{ $proveedor->id }}">{{ $proveedor->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="number" min="0" step="0.01" x-model="vinculo.precio_costo" placeholder="Precio de costo"
+                                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                <input type="text" x-model="vinculo.codigo_proveedor" placeholder="Cód. proveedor (opc.)"
+                                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                <button @click="vincularProveedor()"
+                                    class="col-span-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">
+                                    Vincular proveedor
+                                </button>
+                            </div>
+                        </div>
+                    @endcan
+                </div>
+
+                {{-- Editar o eliminar la prenda (solo administrador) --}}
+                @can('administrar')
+                    <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
+                        <button @click="abrirEdicionProducto()"
+                            class="px-3 py-2 text-sm bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg">
+                            Editar
+                        </button>
+                        <button @click="eliminarProducto()"
+                            class="px-3 py-2 text-sm bg-white hover:bg-red-50 text-red-600 border border-red-300 rounded-lg">
+                            Eliminar
+                        </button>
+                    </div>
+                @endcan
+
+                <p class="mt-3 text-sm min-h-5" x-text="estadoFicha.mensaje" :class="{
+                                'text-green-600': estadoFicha.tipo === 'ok',
+                                'text-red-600': estadoFicha.tipo === 'error',
+                                'text-gray-500': estadoFicha.tipo === 'info'
+                            }"></p>
             </div>
         </div>
 

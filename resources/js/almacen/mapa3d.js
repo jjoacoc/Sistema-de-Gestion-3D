@@ -58,6 +58,7 @@ const puntoArrastre = new THREE.Vector3();
 const cargadorTexturas = new THREE.TextureLoader();
 const texturas = new Map(); // url -> textura (para no cargar dos veces la misma imagen)
 let inicioClick = null;
+let ultimoClick = null; // Para detectar el doble clic (dos clics seguidos)
 
 if (contenedor) {
     iniciar();
@@ -184,7 +185,6 @@ function conectarEventos() {
     lienzo.addEventListener("pointermove", alMoverPuntero);
     lienzo.addEventListener("pointerup", alSoltar);
     lienzo.addEventListener("pointerleave", ocultarGlobo);
-    lienzo.addEventListener("dblclick", alHacerDobleClick);
 
     // Soltar una prenda de la lista "Sin ubicar" sobre una sección del estante
     lienzo.addEventListener("dragover", alArrastrarSobreEstante);
@@ -1114,6 +1114,20 @@ function alSoltar(evento) {
     // Si arrastró, el usuario estaba girando la cámara: no cuenta como click
     if (distancia < 5 && evento.button === 0) {
         alHacerClick(evento);
+
+        // Doble clic: dos clics seguidos, cerca uno del otro y en menos de 0,4 segundos
+        const ahora = performance.now();
+        const esDoble =
+            ultimoClick !== null &&
+            ahora - ultimoClick.tiempo < 400 &&
+            Math.hypot(evento.clientX - ultimoClick.x, evento.clientY - ultimoClick.y) < 10;
+
+        if (esDoble) {
+            ultimoClick = null;
+            alHacerDobleClick(evento);
+        } else {
+            ultimoClick = { tiempo: ahora, x: evento.clientX, y: evento.clientY };
+        }
     }
 }
 
@@ -1184,14 +1198,26 @@ function alHacerClick(evento) {
     }
 }
 
-// Doble click sobre una prenda: abre su ficha (stock, proveedores, editar)
+// Doble clic: sobre una prenda abre su ficha; sobre un estante, lo abre (la cámara se acerca)
 function alHacerDobleClick(evento) {
     const objeto = objetoBajoPuntero(evento);
 
-    if (objeto?.userData.tipo === "producto") {
-        window.dispatchEvent(
-            new CustomEvent("abrir-ficha", { detail: objeto.userData.producto }),
-        );
+    if (!objeto) return;
+    const info = objeto.userData;
+
+    if (info.tipo === "producto") {
+        window.dispatchEvent(new CustomEvent("abrir-ficha", { detail: info.producto }));
+        return;
+    }
+
+    if (info.tipo === "estante" && !modoEdicion && idInterior === null) {
+        const estante = datos.estantes.find((e) => e.id === info.id);
+
+        if (estante) {
+            window.dispatchEvent(
+                new CustomEvent("solicitar-abrir-estante", { detail: estante }),
+            );
+        }
     }
 }
 
