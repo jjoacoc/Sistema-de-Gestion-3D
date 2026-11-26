@@ -1,4 +1,4 @@
-// Funciones simples que NO dependen de Konva.
+// Funciones simples que NO dependen de Three.
 // Por eso pueden cargarse en todas las páginas sin descargar la librería de dibujo.
 
 // Convierte 12500 en "$ 12.500,00"

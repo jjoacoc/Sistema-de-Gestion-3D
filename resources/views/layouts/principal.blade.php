@@ -67,7 +67,7 @@
         @yield('contenido')
     </main>
 
-    {{-- Aquí cada página puede insertar sus propios scripts (por ejemplo, Konva) --}}
+    {{-- Aquí cada página puede insertar sus propios scripts (por ejemplo, Three) --}}
     @stack('scripts')
 </body>
 

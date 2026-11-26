@@ -53,27 +53,59 @@ function colorDePrenda(nombre) {
 const FORMAS = {
     remera: {
         cuello: { x: 9, y: 35, hundimiento: 7 },
-        derecha: [[24, 32], [45, 17], [38, 7], [25, 13], [25, -35]],
+        derecha: [
+            [24, 32],
+            [45, 17],
+            [38, 7],
+            [25, 13],
+            [25, -35],
+        ],
     },
     mangaLarga: {
         cuello: { x: 9, y: 35, hundimiento: 7 },
-        derecha: [[24, 32], [48, -14], [39, -17], [26, 8], [26, -35]],
+        derecha: [
+            [24, 32],
+            [48, -14],
+            [39, -17],
+            [26, 8],
+            [26, -35],
+        ],
     },
     abrigo: {
         cuello: { x: 10, y: 38, hundimiento: 3 },
-        derecha: [[26, 35], [50, -16], [40, -20], [28, 6], [28, -48]],
+        derecha: [
+            [26, 35],
+            [50, -16],
+            [40, -20],
+            [28, 6],
+            [28, -48],
+        ],
     },
     pantalon: {
         cuello: null,
-        derecha: [[20, 35], [24, -45], [6, -45], [3, -3]],
+        derecha: [
+            [20, 35],
+            [24, -45],
+            [6, -45],
+            [3, -3],
+        ],
     },
     short: {
         cuello: null,
-        derecha: [[20, 35], [25, -10], [5, -10], [3, 0]],
+        derecha: [
+            [20, 35],
+            [25, -10],
+            [5, -10],
+            [3, 0],
+        ],
     },
     vestido: {
         cuello: { x: 9, y: 35, hundimiento: 5 },
-        derecha: [[13, 34], [14, 8], [37, -45]],
+        derecha: [
+            [13, 34],
+            [14, 8],
+            [37, -45],
+        ],
     },
 };
 
@@ -83,7 +115,12 @@ function crearForma({ cuello, derecha }) {
     if (cuello) {
         // Escote curvo entre los dos hombros
         forma.moveTo(-cuello.x, cuello.y);
-        forma.quadraticCurveTo(0, cuello.y - cuello.hundimiento, cuello.x, cuello.y);
+        forma.quadraticCurveTo(
+            0,
+            cuello.y - cuello.hundimiento,
+            cuello.x,
+            cuello.y,
+        );
     } else {
         forma.moveTo(-derecha[0][0], derecha[0][1]);
     }
@@ -122,16 +159,259 @@ function pieza(geometria, material, x, y, z) {
     return malla;
 }
 
+// ------------------------------------------------------------
+// Accesorios: cada uno tiene su propia forma, según el nombre del producto
+// ------------------------------------------------------------
+function construirAccesorio(producto, { material, oscuro, claro, metal }) {
+    const nombre = normalizar(producto.nombre);
+    const g = new THREE.Group();
+
+    if (nombre.includes("bufanda")) {
+        // Anillo alrededor del cuello y dos puntas colgando (una más larga)
+        const anillo = pieza(
+            new THREE.TorusGeometry(13, 5, 14, 32),
+            material,
+            0,
+            24,
+            0,
+        );
+        anillo.rotation.x = Math.PI / 2;
+        g.add(anillo);
+        g.add(pieza(new THREE.BoxGeometry(11, 60, 4), material, -6, -6, 19));
+        g.add(pieza(new THREE.BoxGeometry(11, 44, 4), material, 7, 2, 20));
+        // Rayas y flecos
+        g.add(pieza(new THREE.BoxGeometry(11.4, 4, 4.4), oscuro, -6, -22, 19));
+        g.add(pieza(new THREE.BoxGeometry(11.4, 4, 4.4), oscuro, 7, -8, 20));
+        for (let i = 0; i < 5; i++) {
+            g.add(
+                pieza(
+                    new THREE.BoxGeometry(1.2, 6, 1.2),
+                    material,
+                    -10.4 + i * 2.1,
+                    -39,
+                    19,
+                ),
+            );
+            g.add(
+                pieza(
+                    new THREE.BoxGeometry(1.2, 6, 1.2),
+                    material,
+                    3 + i * 2.1,
+                    -25,
+                    20,
+                ),
+            );
+        }
+        g.userData.sinFoto = true;
+    } else if (nombre.includes("gorra")) {
+        // Copa, botón, banda y visera
+        const copa = pieza(
+            new THREE.SphereGeometry(
+                22,
+                32,
+                20,
+                0,
+                Math.PI * 2,
+                0,
+                Math.PI / 2,
+            ),
+            material,
+            0,
+            0,
+            0,
+        );
+        copa.scale.y = 0.9;
+        g.add(copa);
+        g.add(pieza(new THREE.SphereGeometry(2.2, 12, 12), oscuro, 0, 19.8, 0));
+        g.add(
+            pieza(
+                new THREE.CylinderGeometry(22.3, 22.3, 3, 32),
+                oscuro,
+                0,
+                1,
+                0,
+            ),
+        );
+        const visera = pieza(
+            new THREE.CylinderGeometry(
+                24,
+                24,
+                1.6,
+                32,
+                1,
+                false,
+                -Math.PI / 2,
+                Math.PI,
+            ),
+            oscuro,
+            0,
+            0.8,
+            10,
+        );
+        visera.scale.x = 0.85;
+        g.add(visera);
+        g.userData.sinFoto = true;
+    } else if (nombre.includes("gorro")) {
+        // Gorro de lana con puño y pompón
+        const copa = pieza(
+            new THREE.SphereGeometry(
+                20,
+                32,
+                20,
+                0,
+                Math.PI * 2,
+                0,
+                Math.PI / 2,
+            ),
+            material,
+            0,
+            4,
+            0,
+        );
+        copa.scale.y = 1.1;
+        g.add(copa);
+        g.add(
+            pieza(
+                new THREE.CylinderGeometry(20.6, 20.6, 9, 32),
+                oscuro,
+                0,
+                0,
+                0,
+            ),
+        );
+        g.add(pieza(new THREE.SphereGeometry(6, 16, 16), claro, 0, 28, 0));
+        g.userData.sinFoto = true;
+    } else if (nombre.includes("media")) {
+        // Un par de medias: pierna, puño, pie, talón y punta
+        [-12, 12].forEach((x, i) => {
+            const z = i * 3;
+            g.add(
+                pieza(
+                    new THREE.CylinderGeometry(6.5, 6.5, 40, 20),
+                    material,
+                    x,
+                    8,
+                    z,
+                ),
+            );
+            g.add(
+                pieza(
+                    new THREE.CylinderGeometry(6.9, 6.9, 5, 20),
+                    oscuro,
+                    x,
+                    26,
+                    z,
+                ),
+            );
+            g.add(
+                pieza(
+                    new THREE.BoxGeometry(13, 9, 26),
+                    material,
+                    x,
+                    -13,
+                    z + 9,
+                ),
+            );
+            const talon = pieza(
+                new THREE.SphereGeometry(6.5, 16, 12),
+                material,
+                x,
+                -13,
+                z - 4,
+            );
+            talon.scale.y = 0.7;
+            g.add(talon);
+            const punta = pieza(
+                new THREE.SphereGeometry(6.5, 16, 12),
+                oscuro,
+                x,
+                -13,
+                z + 22,
+            );
+            punta.scale.y = 0.7;
+            g.add(punta);
+        });
+        g.userData.sinFoto = true;
+    } else if (nombre.includes("cinturon")) {
+        // Cinturón enrollado con su hebilla
+        const cuerpo = new THREE.Mesh(
+            new THREE.CylinderGeometry(24, 24, 6, 48, 1, true),
+            new THREE.MeshStandardMaterial({
+                color: material.color,
+                roughness: 0.7,
+                side: THREE.DoubleSide,
+            }),
+        );
+        cuerpo.castShadow = true;
+        g.add(cuerpo);
+        g.add(pieza(new THREE.BoxGeometry(9, 8, 1.6), metal, 0, 0, 24.5));
+        g.add(pieza(new THREE.BoxGeometry(5, 4, 1.8), oscuro, 0, 0, 24.6));
+        g.userData.sinFoto = true;
+    } else if (nombre.includes("guante")) {
+        // Guante: palma, cuatro dedos y pulgar
+        g.add(pieza(new THREE.BoxGeometry(22, 24, 6), material, 0, 0, 0));
+        g.add(pieza(new THREE.BoxGeometry(24, 8, 7), oscuro, 0, -14, 0)); // Puño
+        [-8.25, -2.75, 2.75, 8.25].forEach((x, i) => {
+            const largo = [16, 19, 18, 14][i];
+            g.add(
+                pieza(
+                    new THREE.BoxGeometry(4.8, largo, 5.2),
+                    material,
+                    x,
+                    12 + largo / 2,
+                    0,
+                ),
+            );
+        });
+        const pulgar = pieza(
+            new THREE.BoxGeometry(5, 14, 5.2),
+            material,
+            15,
+            4,
+            0,
+        );
+        pulgar.rotation.z = -0.7;
+        g.add(pulgar);
+        g.userData.sinFoto = true;
+    } else {
+        // Cualquier otro accesorio: un bolso
+        g.add(pieza(new THREE.BoxGeometry(44, 34, 14), material, 0, 0, 0));
+        g.add(pieza(new THREE.BoxGeometry(44.5, 3, 14.5), oscuro, 0, 12, 0));
+        g.add(
+            pieza(
+                new THREE.TorusGeometry(12, 1.8, 12, 32, Math.PI),
+                oscuro,
+                0,
+                17,
+                0,
+            ),
+        );
+    }
+
+    return g;
+}
+
 // Arma la prenda según su categoría y la pinta con el color del producto
 function construirPrenda(producto) {
     const color = colorDePrenda(producto.color);
-    const material = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.02 });
+    const material = new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.85,
+        metalness: 0.02,
+    });
     const oscuro = new THREE.MeshStandardMaterial({
         color: new THREE.Color(color).multiplyScalar(0.7),
         roughness: 0.9,
     });
-    const claro = new THREE.MeshStandardMaterial({ color: 0xf9fafb, roughness: 0.5 });
-    const metal = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.3, metalness: 0.7 });
+    const claro = new THREE.MeshStandardMaterial({
+        color: 0xf9fafb,
+        roughness: 0.5,
+    });
+    const metal = new THREE.MeshStandardMaterial({
+        color: 0xd1d5db,
+        roughness: 0.3,
+        metalness: 0.7,
+    });
 
     const grupo = new THREE.Group();
 
@@ -140,34 +420,62 @@ function construirPrenda(producto) {
             grupo.add(extruir(FORMAS.mangaLarga, material));
             // Botones al frente
             for (let y = 28; y >= -30; y -= 9.7) {
-                grupo.add(pieza(new THREE.SphereGeometry(1.2, 12, 12), claro, 0, y, 7.6));
+                grupo.add(
+                    pieza(
+                        new THREE.SphereGeometry(1.2, 12, 12),
+                        claro,
+                        0,
+                        y,
+                        7.6,
+                    ),
+                );
             }
             break;
         }
         case "buzos": {
             grupo.add(extruir(FORMAS.mangaLarga, material));
-            grupo.add(pieza(new THREE.BoxGeometry(30, 13, 2), oscuro, 0, -18, 7.4)); // Bolsillo canguro
-            grupo.add(pieza(new THREE.BoxGeometry(57, 6, 15), oscuro, 0, -33, 0)); // Elástico de la cintura
+            grupo.add(
+                pieza(new THREE.BoxGeometry(30, 13, 2), oscuro, 0, -18, 7.4),
+            ); // Bolsillo canguro
+            grupo.add(
+                pieza(new THREE.BoxGeometry(57, 6, 15), oscuro, 0, -33, 0),
+            ); // Elástico de la cintura
             break;
         }
         case "abrigos": {
             grupo.add(extruir(FORMAS.abrigo, material));
-            grupo.add(pieza(new THREE.BoxGeometry(1, 84, 1.2), metal, 0, -6, 7.4)); // Cierre
-            grupo.add(pieza(new THREE.BoxGeometry(22, 5, 15), oscuro, 0, 37, 0)); // Cuello
+            grupo.add(
+                pieza(new THREE.BoxGeometry(1, 84, 1.2), metal, 0, -6, 7.4),
+            ); // Cierre
+            grupo.add(
+                pieza(new THREE.BoxGeometry(22, 5, 15), oscuro, 0, 37, 0),
+            ); // Cuello
             break;
         }
         case "pantalones": {
             grupo.add(extruir(FORMAS.pantalon, material));
-            grupo.add(pieza(new THREE.BoxGeometry(46, 4, 15), oscuro, 0, 33, 0)); // Cinturón
-            grupo.add(pieza(new THREE.BoxGeometry(0.6, 34, 0.6), oscuro, 0, 14, 7.3)); // Costura del frente
-            const boton = pieza(new THREE.CylinderGeometry(2, 2, 1, 16), metal, 0, 33, 7.8);
+            grupo.add(
+                pieza(new THREE.BoxGeometry(46, 4, 15), oscuro, 0, 33, 0),
+            ); // Cinturón
+            grupo.add(
+                pieza(new THREE.BoxGeometry(0.6, 34, 0.6), oscuro, 0, 14, 7.3),
+            ); // Costura del frente
+            const boton = pieza(
+                new THREE.CylinderGeometry(2, 2, 1, 16),
+                metal,
+                0,
+                33,
+                7.8,
+            );
             boton.rotation.x = Math.PI / 2;
             grupo.add(boton);
             break;
         }
         case "shorts": {
             grupo.add(extruir(FORMAS.short, material));
-            grupo.add(pieza(new THREE.BoxGeometry(46, 4, 15), oscuro, 0, 33, 0));
+            grupo.add(
+                pieza(new THREE.BoxGeometry(46, 4, 15), oscuro, 0, 33, 0),
+            );
             break;
         }
         case "vestidos": {
@@ -176,10 +484,17 @@ function construirPrenda(producto) {
             break;
         }
         case "accesorios": {
-            // Un bolso: cuerpo, franja y asa
-            grupo.add(pieza(new THREE.BoxGeometry(44, 34, 14), material, 0, 0, 0));
-            grupo.add(pieza(new THREE.BoxGeometry(44.5, 3, 14.5), oscuro, 0, 12, 0));
-            grupo.add(pieza(new THREE.TorusGeometry(12, 1.8, 12, 32, Math.PI), oscuro, 0, 17, 0));
+            // La forma depende del nombre del producto (Accesorios es solo la categoría)
+            grupo.add(
+                construirAccesorio(producto, {
+                    material,
+                    oscuro,
+                    claro,
+                    metal,
+                }),
+            );
+            grupo.userData.sinFoto =
+                grupo.children[0].userData.sinFoto === true;
             break;
         }
         default: {
@@ -210,7 +525,12 @@ function iniciar() {
     escena = new THREE.Scene();
     escena.background = new THREE.Color(0xf3f4f6);
 
-    camara = new THREE.PerspectiveCamera(38, contenedor.clientWidth / ALTO_VISOR, 1, 2000);
+    camara = new THREE.PerspectiveCamera(
+        38,
+        contenedor.clientWidth / ALTO_VISOR,
+        1,
+        2000,
+    );
 
     renderizador = new THREE.WebGLRenderer({ antialias: true });
     renderizador.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -255,7 +575,9 @@ function iniciar() {
     // Si el usuario agarra la prenda, el giro automático se apaga solo
     controles.addEventListener("start", () => {
         controles.autoRotate = false;
-        window.dispatchEvent(new CustomEvent("visor-giro-cambiado", { detail: false }));
+        window.dispatchEvent(
+            new CustomEvent("visor-giro-cambiado", { detail: false }),
+        );
     });
 }
 
@@ -299,7 +621,8 @@ function colocarPrenda(nueva) {
         escena.remove(prenda);
         prenda.traverse((objeto) => {
             objeto.geometry?.dispose();
-            if (objeto.material) [].concat(objeto.material).forEach((m) => m.dispose());
+            if (objeto.material)
+                [].concat(objeto.material).forEach((m) => m.dispose());
         });
     }
 
@@ -319,10 +642,16 @@ function colocarPrenda(nueva) {
     // Distancia a la que la prenda entra completa en pantalla
     const mayor = Math.max(tamano.y, tamano.x / camara.aspect);
     vista.centroY = tamano.y / 2;
-    vista.distancia = (mayor / 2 / Math.tan(THREE.MathUtils.degToRad(camara.fov / 2))) * 1.4 + tamano.z;
+    vista.distancia =
+        (mayor / 2 / Math.tan(THREE.MathUtils.degToRad(camara.fov / 2))) * 1.4 +
+        tamano.z;
 
     controles.target.set(0, vista.centroY, 0);
-    camara.position.set(vista.distancia * 0.7, vista.centroY + vista.distancia * 0.2, vista.distancia * 0.7);
+    camara.position.set(
+        vista.distancia * 0.7,
+        vista.centroY + vista.distancia * 0.2,
+        vista.distancia * 0.7,
+    );
     controles.update();
 }
 
@@ -342,7 +671,9 @@ function irAVista(nombre) {
     if (!destino || !controles) return;
 
     controles.autoRotate = false;
-    window.dispatchEvent(new CustomEvent("visor-giro-cambiado", { detail: false }));
+    window.dispatchEvent(
+        new CustomEvent("visor-giro-cambiado", { detail: false }),
+    );
 
     transicion = {
         inicio: performance.now(),
@@ -357,7 +688,10 @@ function bucle() {
     requestAnimationFrame(bucle);
 
     if (transicion) {
-        const avance = Math.min(1, (performance.now() - transicion.inicio) / transicion.duracion);
+        const avance = Math.min(
+            1,
+            (performance.now() - transicion.inicio) / transicion.duracion,
+        );
         const suave = 1 - Math.pow(1 - avance, 3);
         camara.position.lerpVectors(transicion.desde, transicion.hasta, suave);
         if (avance >= 1) transicion = null;
@@ -372,11 +706,22 @@ function bucle() {
 // Si el archivo no existe, se queda la prenda generada.
 // ------------------------------------------------------------
 async function intentarModeloReal(producto, version) {
-    const ruta = `/modelos/${normalizar(producto.categoria)}.glb`;
+    // Primero un modelo propio del producto (por código); si no hay, el de la categoría
+    const candidatas = [
+        `/modelos/${String(producto.codigo).toLowerCase()}.glb`,
+        `/modelos/${normalizar(producto.categoria)}.glb`,
+    ];
+    let ruta = null;
 
     try {
-        const comprobacion = await fetch(ruta, { method: "HEAD" });
-        if (!comprobacion.ok) return;
+        for (const candidata of candidatas) {
+            const comprobacion = await fetch(candidata, { method: "HEAD" });
+            if (comprobacion.ok) {
+                ruta = candidata;
+                break;
+            }
+        }
+        if (!ruta) return;
 
         const gltf = await new GLTFLoader().loadAsync(ruta);
         if (version !== versionVisor) return; // Mientras cargaba, se abrió otra prenda
@@ -388,7 +733,11 @@ async function intentarModeloReal(producto, version) {
         const centro = caja.getCenter(new THREE.Vector3());
 
         modelo.scale.setScalar(80 / tamano.y);
-        modelo.position.set(-centro.x * (80 / tamano.y), 0, -centro.z * (80 / tamano.y));
+        modelo.position.set(
+            -centro.x * (80 / tamano.y),
+            0,
+            -centro.z * (80 / tamano.y),
+        );
 
         const envoltorio = new THREE.Group();
         envoltorio.add(modelo);
