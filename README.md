@@ -190,7 +190,7 @@ Toda la página del almacén funciona **sin recargar**. El JavaScript usa **Axio
 - `OrbitControls`: girar, acercar y desplazar la cámara.
 - `Raycaster`: saber qué objeto está bajo el mouse (selección, tooltip y arrastre de prendas).
 - `ExtrudeGeometry`: generar prendas con volumen a partir de una silueta.
-- `GLTFLoader`: opcionalmente, cargar modelos `.glb` reales colocados en `public/modelos/`.
+- `GLTFLoader`: carga modelos `.glb` reales desde `public/modelos/<codigo>.glb` (por ejemplo, la gorra y el vestido); si el producto no tiene modelo, el visor usa una forma generada por código.
 
 ### Otras librerías del proyecto
 | Librería | Uso |
@@ -243,3 +243,21 @@ Abrí `http://localhost:8000` e ingresá con alguno de los usuarios de prueba. P
 | **Middleware** | `app/Http/Middleware/VerificarRol.php` |
 | **JavaScript** | `resources/js/almacen`: `mapa3d.js` (escena 3D), `visor3d.js` (visor de prendas), `pagina.js` (estado de la interfaz) |
 | **Base de datos** | `database/migrations` y `database/seeders` |
+
+## Créditos y licencias
+
+### Modelos 3D (`public/modelos/`)
+Modelos descargados de [Sketchfab](https://sketchfab.com), usados bajo licencia [Creative Commons Atribución 4.0](http://creativecommons.org/licenses/by/4.0/):
+
+| Producto | Modelo | Autor | Enlace |
+|---|---|---|---|
+| Remera básica (Negro, M) | "T Shirt" | funlab117 | https://skfb.ly/ozHJJ |
+| Remera básica (Blanco, L) | "T-SHIRT" | Obridje | https://skfb.ly/oGqGJ |
+| Gorra | "gorra" | By_Robin | https://skfb.ly/p8PXs |
+| Pack de medias | "socks pack" | Ivar Kramer | https://skfb.ly/oJKPA |
+| Vestido floral | "Floral Dress" | Osmium | https://skfb.ly/6nSIS |
+
+El resto de las prendas y accesorios (por ejemplo, la bufanda) se dibujan con formas generadas por código en `visor3d.js`.
+
+### Imágenes de productos
+Fotografías de referencia usadas solo con fines educativos y sin uso comercial. <Completar con el autor o la fuente y la licencia si corresponde.>
